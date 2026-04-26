@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/alext/projects/**)",
+      "Bash(git -C /home/alext/projects/LinguisticsResearchClimate_NoTricksZone log --oneline -5)",
+      "Bash(python3 -m venv .venv)",
+      "Bash(.venv/bin/python -m pip install --upgrade pip)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/python -m spacy download en_core_web_sm)",
+      "Bash(.venv/bin/python -m pytest tests/ -q)",
+      "Bash(.venv/bin/python *)",
+      "Bash(.venv/bin/python -m notrickszone_scraper.main *)",
+      "Bash(gh auth *)",
+      "Bash(gh repo *)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git remote *)",
+      "Bash(grep *)",
+      "Bash(tail *)",
+      "Bash(head *)",
+      "Bash(ls *)",
+      "Bash(find output *)",
+      "Bash(wc *)",
+      "Bash(rm output/scraper_progress.db)",
+      "Bash(pgrep *)",
+      "Bash(pkill *)",
+      "Bash(ps *)"
+    ]
+  }
+}
