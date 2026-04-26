@@ -542,23 +542,55 @@ class CommentParser:
                     author_name = author_root.get_text(strip=True) or author_name
 
             # ---- Timestamp ----
+            # Order matters. Older NTZ themes wrap the author *inside*
+            # .comment-meta, so falling back to meta.get_text() leaks the
+            # author name into the date string and dateutil's fuzzy parser
+            # mangles names like "AndyG55" into the year. Prefer narrowly-
+            # scoped sources first.
             timestamp = None
+
+            # 1. <time datetime="..."> attribute (newer themes).
             time_elem = scope.select_one('.comment-meta time[datetime], time[datetime]')
             if time_elem:
                 timestamp = parse_wordpress_date(time_elem.get('datetime', ''))
 
+            # 2. <abbr class="comment-date" title="..."> — older NTZ theme
+            #    title is "Saturday, July 21st, 2018, 5:29 pm".
             if not timestamp:
-                # Fallback: visible text of the comment-meta link
+                abbr_date = scope.select_one('abbr.comment-date, abbr.comment-time')
+                if abbr_date:
+                    title = abbr_date.get('title', '')
+                    if title:
+                        cleaned = re.sub(r'(\d+)(st|nd|rd|th)', r'\1', title)
+                        timestamp = parse_wordpress_date(cleaned)
+                    if not timestamp:
+                        timestamp = parse_wordpress_date(abbr_date.get_text(' ', strip=True))
+
+            # 3. <span class="published"> — date-only text, no author noise.
+            if not timestamp:
+                pub = scope.select_one('span.published, .comment-date')
+                if pub:
+                    text = pub.get_text(' ', strip=True)
+                    text = re.sub(r'\s*\|\s*.*$', '', text)
+                    timestamp = parse_wordpress_date(text)
+
+            # 4. Permalink anchor text (newer themes — usually just the date).
+            if not timestamp:
                 meta_link = scope.select_one('.comment-meta a, .commentmetadata a')
                 if meta_link:
                     text = meta_link.get_text(' ', strip=True)
                     text = re.sub(r'\s*\|\s*.*$', '', text)
                     timestamp = parse_wordpress_date(text)
 
+            # 5. Last resort: full meta text, but strip the author name first
+            #    so dateutil can't pick numeric chars out of "AndyG55".
             if not timestamp:
                 meta_text_elem = scope.select_one('.comment-meta, .commentmetadata')
                 if meta_text_elem:
                     text = meta_text_elem.get_text(' ', strip=True)
+                    if author_name and author_name != "Anonymous":
+                        text = re.sub(re.escape(author_name), ' ', text, count=1)
+                    text = re.sub(r'\s*\|\s*.*$', '', text)
                     timestamp = parse_wordpress_date(text)
 
             # ---- Body text ----

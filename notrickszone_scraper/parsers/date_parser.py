@@ -93,16 +93,32 @@ def parse_date(date_str: str) -> Optional[datetime]:
     if german:
         return german
 
-    # Try standard parsing
+    # Strict parse first - fuzzy=True grabs random digits from author names
+    # like "AndyG55" or pingback titles like "Roundup #439", producing dates
+    # in the year 55, 439, etc.
     try:
-        dt = date_parser.parse(date_str, fuzzy=True)
-        # Remove timezone if present for consistency
+        dt = date_parser.parse(date_str, fuzzy=False)
         if dt.tzinfo:
             dt = dt.replace(tzinfo=None)
         return dt
-    except (ValueError, TypeError) as e:
-        logger.debug(f"Could not parse date '{date_str}': {e}")
-        return None
+    except (ValueError, TypeError):
+        pass
+
+    # Fuzzy fallback only if the string contains a clear English-month
+    # token AND a 4-digit year - otherwise dateutil makes things up.
+    if re.search(r'\b(?:January|February|March|April|May|June|July|August|'
+                 r'September|October|November|December|'
+                 r'Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b',
+                 date_str, re.IGNORECASE) and re.search(r'\b(19|20)\d{2}\b', date_str):
+        try:
+            dt = date_parser.parse(date_str, fuzzy=True)
+            if dt.tzinfo:
+                dt = dt.replace(tzinfo=None)
+            return dt
+        except (ValueError, TypeError) as e:
+            logger.debug(f"Could not parse date '{date_str}': {e}")
+
+    return None
 
 
 def parse_relative_date(date_str: str) -> Optional[datetime]:
